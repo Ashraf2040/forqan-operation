@@ -19,8 +19,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!username || !password) return null;
         const user = await prisma.user.findUnique({ where: { username } });
         if (!user?.isActive || !(await compare(password, user.passwordHash))) return null;
-        return { id: user.id, name: user.name, email: `${user.username}@alfurqan.local` };
+        return { id: user.id, name: user.name, email: `${user.username}@alfurqan.local`, role: user.role };
       },
     }),
   ],
+  callbacks: {
+    jwt({ token, user }) {
+      if (user) token.role = user.role;
+      return token;
+    },
+    session({ session, token }) {
+      if (session.user) session.user.role = token.role ?? "viewer";
+      return session;
+    },
+  },
 });

@@ -3,6 +3,7 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -109,6 +110,10 @@ export async function POST(request: Request) {
   let uploadedObjectKey: string | null = null;
 
   try {
+    const session = await auth();
+    if (!session?.user) return jsonError("يجب تسجيل الدخول أولًا.", 401);
+    if (session.user.role !== "admin") return jsonError("لا تملك صلاحية رفع الشواهد.", 403);
+
     const form = await request.formData();
     const file = form.get("file");
 

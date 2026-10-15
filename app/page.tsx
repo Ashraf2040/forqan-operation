@@ -1,6 +1,8 @@
 import Link from "next/link";
-import { ArrowLeft, ArrowUpLeft, BookOpenCheck, ClipboardCheck, GraduationCap, Sparkles, TrendingUp } from "lucide-react";
+import { ArrowLeft, BookOpenCheck, ClipboardCheck, GraduationCap, Sparkles, TrendingUp } from "lucide-react";
 import UserNavButton from "./components/UserNavButton";
+import HomeProgressSummary from "./components/HomeProgressSummary";
+import StageCards from "./components/StageCards";
 
 const stages = [
   { id:"primary", title:"المرحلة الابتدائية", en:"ELEMENTARY", grades:"الصفوف 1 – 6", color:"#dff2e9", icon:"🌱", count:"6 صفوف دراسية" },
@@ -34,15 +36,12 @@ export default function Home() {
         </div>
       </div>
     </section>
-    <section id="stages" className="container pb-24 pt-16">
+    <section id="stages" className="stage-cards-container pb-16 pt-16">
       <div className="mb-9 flex flex-wrap items-end justify-between gap-4"><div><div className="mb-2 text-xs font-bold tracking-[.16em] text-[#b28a4b]">اختر المرحلة</div><h2 className="text-3xl font-bold">رحلتكم تبدأ من هنا</h2><p className="mt-2 text-sm text-[#778581]">اختر المرحلة لعرض برامجها ومتابعة تنفيذها.</p></div><span className="rounded-full bg-[#f3f6f0] px-4 py-2 text-xs text-[#6d7d73]">ثلاث مراحل · خطة متكاملة</span></div>
-      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">{stages.map((stage,i)=><Link key={stage.id} href={`/stage/${stage.id}`} className="stage-card card-shadow group rounded-[22px] border border-[#e9ece6] bg-white p-6">
-        <div className="mb-6 flex items-start justify-between"><span style={{background:stage.color}} className="grid h-[58px] w-[58px] place-items-center rounded-[18px] text-3xl">{stage.icon}</span><span className="serif rounded-full bg-[#f6f7f2] px-3 py-1.5 text-xs tracking-[.14em] text-[#87918b]">0{i+1}</span></div>
-        <span className="serif text-xs font-bold tracking-[.19em] text-[#91a097]">{stage.en}</span><h3 className="mb-1 mt-2 text-xl font-bold">{stage.title}</h3><p className="text-sm text-[#7a8983]">{stage.grades}</p>
-        <div className="mt-6 flex items-center justify-between border-t border-[#eef0ea] pt-4"><span className="text-xs text-[#819088]">{stage.count}</span><span className="grid h-9 w-9 place-items-center rounded-full bg-[#edf6f0] text-[#397c68] transition group-hover:bg-[#176d60] group-hover:text-white"><ArrowUpLeft size={17}/></span></div>
-      </Link>)}</div>
+      <StageCards stages={stages}/>
       <div className="mt-8 rounded-2xl border border-[#e8eee7] bg-[#f7f9f4] px-5 py-4 text-sm leading-7 text-[#77827b]">تصفح البرامج وسجلات المتابعة لكل مرحلة، أو افتح بطاقة «جميع المراحل» للاطلاع على البرامج المشتركة ومؤشرات الخطة الموحدة.</div>
     </section>
+    <HomeProgressSummary/>
     <footer className="border-t border-[#e9ece7] py-6"><div className="container flex flex-wrap justify-between gap-2 text-xs text-[#8b9690]"><span>مدارس الفرقان الأهلية · القسم الأمريكي</span><span>الخطة التشغيلية 2026–2027م</span></div></footer>
   </main>;
 }

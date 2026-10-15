@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
-import { LogOut, UserRound } from "lucide-react";
+import { LogOut, Settings, UserRound } from "lucide-react";
 import { useState } from "react";
 
 export default function UserNavButton() {
@@ -24,6 +24,7 @@ export default function UserNavButton() {
     </button>
     {open && <div className="absolute left-0 top-[calc(100%+10px)] z-50 min-w-48 rounded-2xl border border-[#e7ece5] bg-white p-2 shadow-[0_16px_40px_#173f3020]">
       <div className="border-b border-[#eef1eb] px-3 py-2 text-xs text-[#7c8983]">مسجل الدخول باسم <b className="mt-1 block text-sm text-[#344d42]">{session.user.name || "المستخدم"}</b></div>
+      {session.user.role === "admin" && <Link href="/admin" onClick={() => setOpen(false)} className="mt-1 flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold text-[#42594e] transition hover:bg-[#f3f7f2]"><Settings size={16}/> إدارة المستخدمين</Link>}
       <button type="button" onClick={() => void signOut({ callbackUrl: "/" })} className="mt-1 flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold text-[#8a514a] transition hover:bg-[#fbf2f0]"><LogOut size={16}/> تسجيل الخروج</button>
     </div>}
   </div>;
