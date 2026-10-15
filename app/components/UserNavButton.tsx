@@ -10,7 +10,7 @@ export default function UserNavButton() {
   const [open, setOpen] = useState(false);
 
   if (status === "loading") {
-    return <span aria-hidden="true" className="h-10 w-10 animate-pulse rounded-full bg-[#f0f4ef]" />;
+    return <button type="button" disabled aria-label="جارٍ تحميل المستخدم" title="جارٍ تحميل المستخدم" className="btn btn-light !rounded-full !px-4 !py-2.5 text-sm opacity-80"><UserRound size={18}/><span className="hidden sm:inline">حسابي</span></button>;
   }
 
   if (!session?.user) {

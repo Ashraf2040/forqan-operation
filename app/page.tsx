@@ -20,8 +20,8 @@ export default function Home() {
       <div className="hero-orb left-[8%] top-16 h-52 w-52 bg-[#e4f3e9]/70"/><div className="hero-orb right-[10%] top-40 h-32 w-32 bg-[#f7ead1]/60"/>
       <div className="container relative grid min-h-[480px] items-center gap-10 py-12 lg:grid-cols-[1.1fr_.9fr]">
         <div className="max-w-[620px]"><div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#dce9df] bg-white/80 px-4 py-2 text-xs font-semibold text-[#557468]"><Sparkles size={14} className="text-[#b18a45}"/> رؤية واضحة، وأثر يصنع الفرق</div>
-          <h1 className="mb-4 text-[clamp(2.1rem,3.7vw,3.45rem)] font-bold leading-[1.32] tracking-[-.035em]">الخطة التشغيلية<br/><span className="text-[#137467]">لمدارس الفرقان الأهلية</span></h1>
-          <p className="mb-7 text-base leading-8 text-[#71807d]">القسم الأمريكي · العام الدراسي 2026–2027م<br/>منصة واحدة لمتابعة البرامج، وقياس التقدم، وتوثيق الشواهد.</p>
+          <h1 className="mb-3 text-[clamp(2rem,2.9vw,2.65rem)] font-bold leading-[1.35] tracking-[-.035em]">الخطة التشغيلية <span>لمدارس الفرقان الأهلية</span> <span className="bg-gradient-to-l from-[#12836d] via-[#16836a] to-[#38a66c] bg-clip-text text-transparent">- القسم الأمريكي</span></h1>
+          <p className="mb-7 text-base leading-8 text-[#71807d]">العام الدراسي 2026–2027م<br/>منصة واحدة لمتابعة البرامج، وقياس التقدم، وتوثيق الشواهد.</p>
           <div className="flex flex-wrap gap-3"><a href="#stages" className="btn btn-primary">ابدأ استكشاف الخطة <ArrowLeft size={18}/></a><span className="flex items-center gap-2 px-3 text-sm text-[#798783]"><ClipboardCheck size={17}/> متابعة منظمة خطوة بخطوة</span></div>
           <div className="mt-12 flex items-center gap-8 border-t border-[#e4e9e1] pt-6"><div><b className="serif text-2xl">٣</b><span className="mr-2 text-sm text-[#72817d]">مراحل دراسية</span></div><div className="h-8 w-px bg-[#e3e9e2]"/><div><b className="serif text-2xl">٢٠٢٧</b><span className="mr-2 text-sm text-[#72817d]">عام الإنجاز</span></div></div>
         </div>
