@@ -1,0 +1,34 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Evidence {
+  id           String   @id @default(cuid())
+  stage        String
+  programId    String
+  programTitle String
+  level        String
+  assessment   String   @default("قيد التنفيذ")
+  notes        String   @default("")
+  fileName     String
+  filePath     String
+  mimeType     String
+  size         Int
+  createdAt    DateTime @default(now())
+}
+
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  name         String
+  passwordHash String
+  role         String   @default("admin")
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}

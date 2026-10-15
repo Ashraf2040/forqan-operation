@@ -1,0 +1,48 @@
+import Link from "next/link";
+import { ArrowLeft, ArrowUpLeft, BookOpenCheck, ClipboardCheck, GraduationCap, Sparkles, TrendingUp } from "lucide-react";
+import UserNavButton from "./components/UserNavButton";
+
+const stages = [
+  { id:"primary", title:"المرحلة الابتدائية", en:"ELEMENTARY", grades:"الصفوف 1 – 6", color:"#dff2e9", icon:"🌱", count:"6 صفوف دراسية" },
+  { id:"middle", title:"المرحلة المتوسطة", en:"MIDDLE SCHOOL", grades:"الصفوف 7 – 9", color:"#e8eafd", icon:"🧭", count:"3 صفوف دراسية" },
+  { id:"high", title:"المرحلة الثانوية", en:"HIGH SCHOOL", grades:"الصفوف 10 – 12", color:"#fae9d8", icon:"🎓", count:"3 صفوف دراسية" },
+  { id:"all", title:"جميع المراحل", en:"ALL STAGES", grades:"الابتدائية والمتوسطة والثانوية", color:"#e7f3ec", icon:"🏫", count:"14 برنامجًا مشتركًا" },
+];
+
+export default function Home() {
+  return <main className="min-h-screen overflow-hidden">
+    <nav className="container flex h-[82px] items-center justify-between border-b border-[#e9ece7]">
+      <Link href="/" className="flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-2xl bg-[#e0f1e9] text-[#146b5d]"><BookOpenCheck size={23}/></span><span><b className="block text-[15px]">مدارس الفرقان الدولية</b><small className="text-[13px] text-[#7c8986]">القسم الأمريكي</small></span></Link>
+      <span className="hidden items-center gap-2 rounded-full border border-[#e8ebe5] bg-white px-4 py-2 text-xs text-[#697876] sm:flex"><span className="h-2 w-2 rounded-full bg-[#54a57d]"/> العام الدراسي 2026 – 2027</span>
+      <div className="flex items-center gap-2"><UserNavButton/><a href="#stages" className="btn btn-primary !rounded-full !px-4 !py-2.5 text-sm">استكشف الخطة <ArrowLeft size={16}/></a></div>
+    </nav>
+    <section className="grid-bg relative">
+      <div className="hero-orb left-[8%] top-16 h-52 w-52 bg-[#e4f3e9]/70"/><div className="hero-orb right-[10%] top-40 h-32 w-32 bg-[#f7ead1]/60"/>
+      <div className="container relative grid min-h-[480px] items-center gap-10 py-12 lg:grid-cols-[1.1fr_.9fr]">
+        <div className="max-w-[620px]"><div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#dce9df] bg-white/80 px-4 py-2 text-xs font-semibold text-[#557468]"><Sparkles size={14} className="text-[#b18a45}"/> رؤية واضحة، وأثر يصنع الفرق</div>
+          <h1 className="mb-4 text-[clamp(2.1rem,3.7vw,3.45rem)] font-bold leading-[1.32] tracking-[-.035em]">الخطة التشغيلية<br/><span className="text-[#137467]">لمدارس الفرقان الأهلية</span></h1>
+          <p className="mb-7 text-base leading-8 text-[#71807d]">القسم الأمريكي · العام الدراسي 2026–2027م<br/>منصة واحدة لمتابعة البرامج، وقياس التقدم، وتوثيق الشواهد.</p>
+          <div className="flex flex-wrap gap-3"><a href="#stages" className="btn btn-primary">ابدأ استكشاف الخطة <ArrowLeft size={18}/></a><span className="flex items-center gap-2 px-3 text-sm text-[#798783]"><ClipboardCheck size={17}/> متابعة منظمة خطوة بخطوة</span></div>
+          <div className="mt-12 flex items-center gap-8 border-t border-[#e4e9e1] pt-6"><div><b className="serif text-2xl">٣</b><span className="mr-2 text-sm text-[#72817d]">مراحل دراسية</span></div><div className="h-8 w-px bg-[#e3e9e2]"/><div><b className="serif text-2xl">٢٠٢٧</b><span className="mr-2 text-sm text-[#72817d]">عام الإنجاز</span></div></div>
+        </div>
+        <div className="relative mx-auto flex h-[350px] w-full max-w-[460px] items-center justify-center">
+          <div className="absolute h-[300px] w-[300px] rounded-full border border-[#d9e9dc]"/><div className="absolute h-[230px] w-[230px] rounded-full border border-dashed border-[#cfdfd3]"/>
+          <div className="float relative grid h-48 w-48 place-items-center rounded-[42%_58%_55%_45%/45%_43%_57%_55%] bg-gradient-to-br from-[#e2f3e9] to-[#bdddcf] shadow-[0_28px_70px_#225e4420]"><span className="text-[82px]">📚</span></div>
+          <div className="absolute right-2 top-10 rounded-2xl border border-[#edf0e9] bg-white p-4 shadow-lg"><div className="mb-1 flex items-center gap-2 text-xs text-[#7b8983]"><TrendingUp size={15} className="text-[#499477]"/> تقدّم مستمر</div><b className="text-sm">خطوة نحو التميّز</b></div>
+          <div className="absolute bottom-6 left-4 flex items-center gap-3 rounded-2xl border border-[#edf0e9] bg-white p-3.5 shadow-lg"><span className="grid h-10 w-10 place-items-center rounded-xl bg-[#fbf1dc] text-xl">✦</span><span><b className="block text-sm">شواهد موثّقة</b><small className="text-xs text-[#87918c]">كل إنجاز له أثر</small></span></div>
+          <div className="absolute left-8 top-12 text-[#b18a45]"><Sparkles size={24}/></div><div className="absolute bottom-14 right-8 text-[#73a991]"><GraduationCap size={26}/></div>
+        </div>
+      </div>
+    </section>
+    <section id="stages" className="container pb-24 pt-16">
+      <div className="mb-9 flex flex-wrap items-end justify-between gap-4"><div><div className="mb-2 text-xs font-bold tracking-[.16em] text-[#b28a4b]">اختر المرحلة</div><h2 className="text-3xl font-bold">رحلتكم تبدأ من هنا</h2><p className="mt-2 text-sm text-[#778581]">اختر المرحلة لعرض برامجها ومتابعة تنفيذها.</p></div><span className="rounded-full bg-[#f3f6f0] px-4 py-2 text-xs text-[#6d7d73]">ثلاث مراحل · خطة متكاملة</span></div>
+      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">{stages.map((stage,i)=><Link key={stage.id} href={`/stage/${stage.id}`} className="stage-card card-shadow group rounded-[22px] border border-[#e9ece6] bg-white p-6">
+        <div className="mb-6 flex items-start justify-between"><span style={{background:stage.color}} className="grid h-[58px] w-[58px] place-items-center rounded-[18px] text-3xl">{stage.icon}</span><span className="serif rounded-full bg-[#f6f7f2] px-3 py-1.5 text-xs tracking-[.14em] text-[#87918b]">0{i+1}</span></div>
+        <span className="serif text-xs font-bold tracking-[.19em] text-[#91a097]">{stage.en}</span><h3 className="mb-1 mt-2 text-xl font-bold">{stage.title}</h3><p className="text-sm text-[#7a8983]">{stage.grades}</p>
+        <div className="mt-6 flex items-center justify-between border-t border-[#eef0ea] pt-4"><span className="text-xs text-[#819088]">{stage.count}</span><span className="grid h-9 w-9 place-items-center rounded-full bg-[#edf6f0] text-[#397c68] transition group-hover:bg-[#176d60] group-hover:text-white"><ArrowUpLeft size={17}/></span></div>
+      </Link>)}</div>
+      <div className="mt-8 rounded-2xl border border-[#e8eee7] bg-[#f7f9f4] px-5 py-4 text-sm leading-7 text-[#77827b]">تصفح البرامج وسجلات المتابعة لكل مرحلة، أو افتح بطاقة «جميع المراحل» للاطلاع على البرامج المشتركة ومؤشرات الخطة الموحدة.</div>
+    </section>
+    <footer className="border-t border-[#e9ece7] py-6"><div className="container flex flex-wrap justify-between gap-2 text-xs text-[#8b9690]"><span>مدارس الفرقان الأهلية · القسم الأمريكي</span><span>الخطة التشغيلية 2026–2027م</span></div></footer>
+  </main>;
+}
