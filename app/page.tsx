@@ -12,7 +12,7 @@ const stages = [
 export default function Home() {
   return <main className="min-h-screen overflow-hidden">
     <nav className="container flex h-[82px] items-center justify-between border-b border-[#e9ece7]">
-      <Link href="/" className="flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-2xl bg-[#e0f1e9] text-[#146b5d]"><BookOpenCheck size={23}/></span><span><b className="block text-[15px]">مدارس الفرقان الدولية</b><small className="text-[13px] text-[#7c8986]">القسم الأمريكي</small></span></Link>
+      <Link href="/" className="flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-2xl bg-[#e0f1e9] text-[#146b5d]"><BookOpenCheck size={23}/></span><span><b className="block text-[15px]">مدارس الفرقان الأهلية</b><small className="text-[13px] text-[#7c8986]">القسم الأمريكي</small></span></Link>
       <span className="hidden items-center gap-2 rounded-full border border-[#e8ebe5] bg-white px-4 py-2 text-xs text-[#697876] sm:flex"><span className="h-2 w-2 rounded-full bg-[#54a57d]"/> العام الدراسي 2026 – 2027</span>
       <div className="flex items-center gap-2"><UserNavButton/><a href="#stages" className="btn btn-primary !rounded-full !px-4 !py-2.5 text-sm">استكشف الخطة <ArrowLeft size={16}/></a></div>
     </nav>
