@@ -9,8 +9,8 @@ if (!username || !password) {
   console.error("أضف INITIAL_ADMIN_USERNAME و INITIAL_ADMIN_PASSWORD إلى ملف .env أولًا.");
   process.exit(1);
 }
-if (password.length < 12) {
-  console.error("يجب أن تتكون كلمة مرور المشرف من 12 حرفًا على الأقل.");
+if (password.length < 8) {
+  console.error("يجب أن تتكون كلمة مرور المشرف من 8 أحرف على الأقل.");
   process.exit(1);
 }
 
