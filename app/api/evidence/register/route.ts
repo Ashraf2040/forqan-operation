@@ -1,8 +1,12 @@
-import { del } from "@vercel/blob";
+import { del, get } from "@vercel/blob";
 import { NextResponse } from "next/server";
 import path from "node:path";
+import { randomUUID } from "node:crypto";
+import { Readable } from "node:stream";
+import type { ReadableStream as NodeReadableStream } from "node:stream/web";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { deleteEvidence, hostingerStorageConfigured, putEvidence } from "@/lib/hostinger-storage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,6 +28,7 @@ export async function POST(request: Request) {
   if (session.user.role !== "admin") return NextResponse.json({ error: "لا تملك صلاحية رفع الشواهد." }, { status: 403 });
 
   let pathname = "";
+  let hostingerPath = "";
   try {
     const input = await request.json();
     pathname = String(input.pathname ?? "");
@@ -47,12 +52,33 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "حجم الملف يجب ألا يتجاوز 100 ميجابايت." }, { status: 413 });
     }
 
+    let filePath = `blob:${pathname}`;
+    if (hostingerStorageConfigured()) {
+      const stagedBlob = await get(pathname, { access: "private" });
+      if (!stagedBlob || stagedBlob.statusCode !== 200) {
+        return NextResponse.json({ error: "تعذر العثور على الملف المرفوع مؤقتًا." }, { status: 404 });
+      }
+      const safeSegment = (value: string) => value.normalize("NFKC").replace(/[^\p{L}\p{N}_-]/gu, "_").slice(0, 80) || "unknown";
+      const relativePath = [safeSegment(stage), safeSegment(programId), safeSegment(level), `${randomUUID()}${path.extname(fileName).toLowerCase()}`].join("/");
+      hostingerPath = relativePath;
+      await putEvidence(relativePath, Readable.fromWeb(stagedBlob.stream as unknown as NodeReadableStream<Uint8Array>));
+      filePath = `sftp:${relativePath}`;
+    }
+
     const evidence = await prisma.evidence.create({
-      data: { stage, programId, programTitle, level, assessment, notes, fileName, filePath: `blob:${pathname}`, mimeType, size },
+      data: { stage, programId, programTitle, level, assessment, notes, fileName, filePath, mimeType, size },
     });
+    if (hostingerPath) {
+      try { await del(pathname); }
+      catch (cleanupError) { console.error("Temporary Blob cleanup failed:", cleanupError); }
+    }
     return NextResponse.json({ evidence: { ...evidence, filePath: `/api/evidence/file/${encodeURIComponent(evidence.id)}` } }, { status: 201 });
   } catch (error) {
     console.error("Evidence registration failed:", error);
+    if (hostingerPath) {
+      try { await deleteEvidence(hostingerPath); }
+      catch (cleanupError) { console.error("Hostinger evidence cleanup failed:", cleanupError); }
+    }
     if (pathname.startsWith("evidence/")) {
       try { await del(pathname); }
       catch (cleanupError) { console.error("Evidence Blob cleanup failed:", cleanupError); }

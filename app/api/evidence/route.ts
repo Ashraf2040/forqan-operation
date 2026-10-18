@@ -5,6 +5,7 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
+import { deleteEvidence } from "@/lib/hostinger-storage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -227,7 +228,9 @@ export async function DELETE(request: Request) {
     const evidence = await prisma.evidence.findUnique({ where: { id } });
     if (!evidence) return jsonError("الشاهد غير موجود أو سبق حذفه.", 404);
 
-    if (evidence.filePath.startsWith("blob:")) {
+    if (evidence.filePath.startsWith("sftp:")) {
+      await deleteEvidence(evidence.filePath.slice("sftp:".length));
+    } else if (evidence.filePath.startsWith("blob:")) {
       await del(evidence.filePath.slice("blob:".length));
     } else {
       try {

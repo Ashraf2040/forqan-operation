@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { get } from "@vercel/blob";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { getEvidence } from "@/lib/hostinger-storage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -35,6 +36,19 @@ export async function GET(
       return new NextResponse(result.stream, {
         headers: {
           "Content-Type": evidence.mimeType || result.blob.contentType || "application/octet-stream",
+          "Content-Disposition": `inline; filename*=UTF-8''${encodeURIComponent(evidence.fileName)}`,
+          "Cache-Control": "private, no-store",
+          "X-Content-Type-Options": "nosniff",
+        },
+      });
+    }
+
+    if (evidence.filePath.startsWith("sftp:")) {
+      const file = await getEvidence(evidence.filePath.slice("sftp:".length));
+      return new NextResponse(new Uint8Array(file), {
+        headers: {
+          "Content-Type": evidence.mimeType || "application/octet-stream",
+          "Content-Length": String(file.byteLength),
           "Content-Disposition": `inline; filename*=UTF-8''${encodeURIComponent(evidence.fileName)}`,
           "Cache-Control": "private, no-store",
           "X-Content-Type-Options": "nosniff",
