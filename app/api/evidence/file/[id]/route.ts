@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { NextResponse } from "next/server";
+import { get } from "@vercel/blob";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -23,6 +24,22 @@ export async function GET(
     const evidence = await prisma.evidence.findUnique({ where: { id } });
     if (!evidence) {
       return NextResponse.json({ error: "الشاهد غير موجود." }, { status: 404 });
+    }
+
+    if (evidence.filePath.startsWith("blob:")) {
+      const blobPath = evidence.filePath.slice("blob:".length);
+      const result = await get(blobPath, { access: "private" });
+      if (!result || result.statusCode !== 200) {
+        return NextResponse.json({ error: "ملف الشاهد غير موجود في التخزين." }, { status: 404 });
+      }
+      return new NextResponse(result.stream, {
+        headers: {
+          "Content-Type": evidence.mimeType || result.blob.contentType || "application/octet-stream",
+          "Content-Disposition": `inline; filename*=UTF-8''${encodeURIComponent(evidence.fileName)}`,
+          "Cache-Control": "private, no-store",
+          "X-Content-Type-Options": "nosniff",
+        },
+      });
     }
 
     const filePath = path.resolve(STORAGE_DIR, evidence.filePath);

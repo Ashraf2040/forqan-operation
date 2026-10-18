@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { del, put } from "@vercel/blob";
 import { mkdir, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
@@ -90,9 +91,10 @@ export async function GET(request: Request) {
   }
 }
 
-// Save the file locally, save metadata in PostgreSQL, and return its private URL.
+// Save evidence in durable Blob storage on Vercel, with local storage for development.
 export async function POST(request: Request) {
   let uploadedObjectPath: string | null = null;
+  let uploadedBlobPath: string | null = null;
 
   try {
     const session = await auth();
@@ -148,10 +150,16 @@ export async function POST(request: Request) {
       `${randomUUID()}-${original}`,
     ].join("/");
 
-    const buffer = Buffer.from(await file.arrayBuffer());
-    uploadedObjectPath = storagePath(objectKey);
-    await mkdir(path.dirname(uploadedObjectPath), { recursive: true });
-    await writeFile(uploadedObjectPath, buffer, { flag: "wx" });
+    const useBlobStorage = process.env.VERCEL === "1" || Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+    if (useBlobStorage) {
+      const blob = await put(objectKey, file, { access: "private", addRandomSuffix: false });
+      uploadedBlobPath = blob.pathname;
+    } else {
+      const buffer = Buffer.from(await file.arrayBuffer());
+      uploadedObjectPath = storagePath(objectKey);
+      await mkdir(path.dirname(uploadedObjectPath), { recursive: true });
+      await writeFile(uploadedObjectPath, buffer, { flag: "wx" });
+    }
 
     const evidence = await prisma.evidence.create({
       data: {
@@ -164,7 +172,7 @@ export async function POST(request: Request) {
         fileName: original,
 
         // Save the storage path in PostgreSQL, not the signed URL.
-        filePath: objectKey,
+        filePath: uploadedBlobPath ? `blob:${uploadedBlobPath}` : objectKey,
 
         mimeType: file.type,
         size: file.size,
@@ -191,9 +199,16 @@ export async function POST(request: Request) {
         console.error("Evidence file cleanup failed:", cleanupError);
       }
     }
+    if (uploadedBlobPath) {
+      try {
+        await del(uploadedBlobPath, { access: "private" });
+      } catch (cleanupError) {
+        console.error("Evidence Blob cleanup failed:", cleanupError);
+      }
+    }
 
     return jsonError(
-      "تعذر حفظ الشاهد. تحقق من مساحة التخزين المحلية واتصال قاعدة البيانات ثم حاول مجددًا.",
+      "تعذر حفظ الشاهد. تحقق من إعدادات التخزين واتصال قاعدة البيانات ثم حاول مجددًا.",
       500
     );
   }
@@ -212,10 +227,14 @@ export async function DELETE(request: Request) {
     const evidence = await prisma.evidence.findUnique({ where: { id } });
     if (!evidence) return jsonError("الشاهد غير موجود أو سبق حذفه.", 404);
 
-    try {
-      await unlink(storagePath(evidence.filePath));
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    if (evidence.filePath.startsWith("blob:")) {
+      await del(evidence.filePath.slice("blob:".length), { access: "private" });
+    } else {
+      try {
+        await unlink(storagePath(evidence.filePath));
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+      }
     }
 
     await prisma.evidence.delete({ where: { id } });
