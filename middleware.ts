@@ -17,5 +17,7 @@ export default auth((request) => {
 });
 
 export const config = {
-  matcher: ["/stage/:path*", "/api/evidence/:path*"],
+  // Evidence handlers enforce authentication themselves. Excluding uploads
+  // prevents middleware from buffering large multipart bodies in memory.
+  matcher: ["/stage/:path*"],
 };

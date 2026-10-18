@@ -14,5 +14,6 @@ coverage/
 !.env.example
 
 .vercel/
+uploads/
 .DS_Store
 Thumbs.db

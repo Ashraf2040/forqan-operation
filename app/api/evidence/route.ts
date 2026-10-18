@@ -1,16 +1,15 @@
 import { NextResponse } from "next/server";
+import { mkdir, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
-import { createClient } from "@supabase/supabase-js";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const MAX_SIZE = 20 * 1024 * 1024;
-const BUCKET = "program-evidence";
-const SIGNED_URL_SECONDS = 60 * 10;
+const MAX_SIZE = 100 * 1024 * 1024;
+const STORAGE_DIR = path.resolve(process.env.EVIDENCE_STORAGE_DIR || path.join(process.cwd(), "uploads", "evidence"));
 
 const ALLOWED_TYPES = new Set([
   "application/pdf",
@@ -19,24 +18,27 @@ const ALLOWED_TYPES = new Set([
   "image/jpeg",
   "image/png",
   "image/webp",
+  "image/gif",
+  "video/mp4",
+  "video/webm",
+  "video/quicktime",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "text/csv",
+  "application/csv",
 ]);
 
-function getSupabase() {
-  const url = process.env.SUPABASE_URL;
-  const secretKey = process.env.SUPABASE_SECRET_KEY;
+const ALLOWED_EXTENSIONS = new Set([
+  ".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png", ".webp", ".gif",
+  ".mp4", ".webm", ".mov", ".xls", ".xlsx", ".csv",
+]);
 
-  if (!url || !secretKey) {
-    throw new Error(
-      "Missing SUPABASE_URL or SUPABASE_SECRET_KEY environment variables."
-    );
+function storagePath(objectKey: string) {
+  const filePath = path.resolve(STORAGE_DIR, objectKey);
+  if (!filePath.startsWith(`${STORAGE_DIR}${path.sep}`)) {
+    throw new Error("Invalid evidence storage path.");
   }
-
-  return createClient(url, secretKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
+  return filePath;
 }
 
 function jsonError(message: string, status: number) {
@@ -52,9 +54,12 @@ function safeSegment(value: string) {
   );
 }
 
-// Load evidence and generate temporary download links.
+// Load evidence and return authenticated file endpoint URLs.
 export async function GET(request: Request) {
   try {
+    const session = await auth();
+    if (!session?.user) return jsonError("يجب تسجيل الدخول أولًا.", 401);
+
     const params = new URL(request.url).searchParams;
     const stage = params.get("stage");
     const programId = params.get("programId");
@@ -69,29 +74,10 @@ export async function GET(request: Request) {
       orderBy: { createdAt: "desc" },
     });
 
-    const supabase = getSupabase();
-
-    const results = await Promise.all(
-      evidence.map(async (item) => {
-        const { data, error } = await supabase.storage
-          .from(BUCKET)
-          .createSignedUrl(item.filePath, SIGNED_URL_SECONDS);
-
-        if (error) {
-          console.error(
-            "Could not create evidence download URL:",
-            error.message
-          );
-
-          return { ...item, filePath: null };
-        }
-
-        return {
-          ...item,
-          filePath: data.signedUrl,
-        };
-      })
-    );
+    const results = evidence.map((item) => ({
+      ...item,
+      filePath: `/api/evidence/file/${encodeURIComponent(item.id)}`,
+    }));
 
     return NextResponse.json(
       { evidence: results },
@@ -104,10 +90,9 @@ export async function GET(request: Request) {
   }
 }
 
-// Upload to Supabase Storage, save metadata in PostgreSQL,
-// and return a temporary URL to the frontend.
+// Save the file locally, save metadata in PostgreSQL, and return its private URL.
 export async function POST(request: Request) {
-  let uploadedObjectKey: string | null = null;
+  let uploadedObjectPath: string | null = null;
 
   try {
     const session = await auth();
@@ -138,15 +123,16 @@ export async function POST(request: Request) {
       return jsonError("أكمل بيانات الشاهد وحاول مرة أخرى.", 400);
     }
 
-    if (!ALLOWED_TYPES.has(file.type)) {
+    const extension = path.extname(file.name).toLowerCase();
+    if (!ALLOWED_TYPES.has(file.type) || !ALLOWED_EXTENSIONS.has(extension)) {
       return jsonError(
-        "نوع الملف غير مدعوم. ارفع PDF أو Word أو صورة JPG أو PNG أو WebP.",
+        "نوع الملف غير مدعوم. ارفع مستندًا أو صورة أو فيديو MP4/MOV/WebM أو ملف Excel/CSV.",
         415
       );
     }
 
     if (file.size === 0 || file.size > MAX_SIZE) {
-      return jsonError("حجم الملف يجب ألا يتجاوز 20 ميجابايت.", 413);
+      return jsonError("حجم الملف يجب ألا يتجاوز 100 ميجابايت.", 413);
     }
 
     const original =
@@ -162,23 +148,10 @@ export async function POST(request: Request) {
       `${randomUUID()}-${original}`,
     ].join("/");
 
-    const supabase = getSupabase();
     const buffer = Buffer.from(await file.arrayBuffer());
-
-    const { error: uploadError } = await supabase.storage
-      .from(BUCKET)
-      .upload(objectKey, buffer, {
-        contentType: file.type,
-        upsert: false,
-      });
-
-    if (uploadError) {
-      console.error("Supabase upload failed:", uploadError.message);
-
-      return jsonError("تعذر رفع الملف إلى التخزين السحابي.", 502);
-    }
-
-    uploadedObjectKey = objectKey;
+    uploadedObjectPath = storagePath(objectKey);
+    await mkdir(path.dirname(uploadedObjectPath), { recursive: true });
+    await writeFile(uploadedObjectPath, buffer, { flag: "wx" });
 
     const evidence = await prisma.evidence.create({
       data: {
@@ -198,36 +171,11 @@ export async function POST(request: Request) {
       },
     });
 
-    // IMPORTANT:
-    // The frontend needs a signed URL immediately after uploading.
-    const { data: signedData, error: signedError } =
-      await supabase.storage
-        .from(BUCKET)
-        .createSignedUrl(objectKey, SIGNED_URL_SECONDS);
-
-    if (signedError) {
-      console.error(
-        "Could not create signed URL after upload:",
-        signedError.message
-      );
-
-      // The file and database record have already been saved.
-      // Do not delete them just because link generation failed.
-      return NextResponse.json(
-        {
-          evidence: { ...evidence, filePath: null },
-          warning: "تم حفظ الشاهد، لكن تعذر إنشاء رابط فتح الملف.",
-        },
-        { status: 201 }
-      );
-    }
-
-    // Return the signed URL to the frontend, but never save it in the DB.
     return NextResponse.json(
       {
         evidence: {
           ...evidence,
-          filePath: signedData.signedUrl,
+          filePath: `/api/evidence/file/${encodeURIComponent(evidence.id)}`,
         },
       },
       { status: 201 }
@@ -236,28 +184,44 @@ export async function POST(request: Request) {
     console.error("Evidence upload failed:", error);
 
     // Clean up the uploaded file if saving the database record failed.
-    if (uploadedObjectKey) {
+    if (uploadedObjectPath) {
       try {
-        const supabase = getSupabase();
-
-        const { error: cleanupError } = await supabase.storage
-          .from(BUCKET)
-          .remove([uploadedObjectKey]);
-
-        if (cleanupError) {
-          console.error(
-            "Supabase cleanup failed:",
-            cleanupError.message
-          );
-        }
+        await unlink(uploadedObjectPath);
       } catch (cleanupError) {
-        console.error("Supabase cleanup failed:", cleanupError);
+        console.error("Evidence file cleanup failed:", cleanupError);
       }
     }
 
     return jsonError(
-      "تعذر حفظ الشاهد. تحقق من إعدادات Supabase وقاعدة البيانات ثم حاول مجددًا.",
+      "تعذر حفظ الشاهد. تحقق من مساحة التخزين المحلية واتصال قاعدة البيانات ثم حاول مجددًا.",
       500
     );
+  }
+}
+
+// Delete both the database record and its private storage object.
+export async function DELETE(request: Request) {
+  try {
+    const session = await auth();
+    if (!session?.user) return jsonError("يجب تسجيل الدخول أولًا.", 401);
+    if (session.user.role !== "admin") return jsonError("لا تملك صلاحية حذف الشواهد.", 403);
+
+    const id = new URL(request.url).searchParams.get("id");
+    if (!id) return jsonError("معرّف الشاهد غير موجود.", 400);
+
+    const evidence = await prisma.evidence.findUnique({ where: { id } });
+    if (!evidence) return jsonError("الشاهد غير موجود أو سبق حذفه.", 404);
+
+    try {
+      await unlink(storagePath(evidence.filePath));
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+
+    await prisma.evidence.delete({ where: { id } });
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Evidence deletion failed:", error);
+    return jsonError("تعذر حذف الشاهد. حاول مرة أخرى.", 500);
   }
 }
