@@ -1,5 +1,5 @@
 import path from "node:path";
-import type { Readable } from "node:stream";
+import { Transform, type Readable } from "node:stream";
 import SftpClient from "ssh2-sftp-client";
 
 export function hostingerStorageConfigured() {
@@ -33,13 +33,31 @@ function remotePath(relativePath: string) {
   return path.posix.join(process.env.HOSTINGER_EVIDENCE_DIR!, relativePath);
 }
 
-export async function putEvidence(relativePath: string, content: Buffer | Readable) {
+export async function putEvidence(
+  relativePath: string,
+  content: Buffer | Readable,
+  totalBytes: number,
+  onProgress?: (percentage: number) => void
+) {
   const client = new SftpClient();
   const fullPath = remotePath(relativePath);
   try {
     await client.connect(config());
     await client.mkdir(path.posix.dirname(fullPath), true);
-    await client.put(content, fullPath);
+    if (Buffer.isBuffer(content)) {
+      await client.put(content, fullPath);
+      onProgress?.(100);
+    } else {
+      let uploadedBytes = 0;
+      const progressStream = new Transform({
+        transform(chunk, encoding, callback) {
+          uploadedBytes += chunk.length;
+          onProgress?.(Math.min(100, Math.floor((uploadedBytes / totalBytes) * 100)));
+          callback(null, chunk);
+        },
+      });
+      await client.put(content.pipe(progressStream), fullPath);
+    }
   } finally {
     await client.end().catch(() => undefined);
   }

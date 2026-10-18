@@ -10,6 +10,7 @@ import { deleteEvidence, hostingerStorageConfigured, putEvidence } from "@/lib/h
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 const ALLOWED_TYPES = new Set([
   "application/pdf", "application/msword",
@@ -21,14 +22,22 @@ const ALLOWED_TYPES = new Set([
   "text/csv", "application/csv",
 ]);
 const ALLOWED_EXTENSIONS = new Set([".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png", ".webp", ".gif", ".mp4", ".webm", ".mov", ".xls", ".xlsx", ".csv"]);
+const MAX_SIZE = 100 * 1024 * 1024;
+
+function safeSegment(value: string) {
+  return value.normalize("NFKC").replace(/[^\p{L}\p{N}_-]/gu, "_").slice(0, 80) || "unknown";
+}
+
+function jsonError(message: string, status: number) {
+  return NextResponse.json({ error: message }, { status });
+}
 
 export async function POST(request: Request) {
   const session = await auth();
-  if (!session?.user) return NextResponse.json({ error: "يجب تسجيل الدخول أولًا." }, { status: 401 });
-  if (session.user.role !== "admin") return NextResponse.json({ error: "لا تملك صلاحية رفع الشواهد." }, { status: 403 });
+  if (!session?.user) return jsonError("يجب تسجيل الدخول أولًا.", 401);
+  if (session.user.role !== "admin") return jsonError("لا تملك صلاحية رفع الشواهد.", 403);
 
   let pathname = "";
-  let hostingerPath = "";
   try {
     const input = await request.json();
     pathname = String(input.pathname ?? "");
@@ -43,46 +52,89 @@ export async function POST(request: Request) {
     const notes = String(input.notes ?? "").slice(0, 4000);
 
     if (!pathname.startsWith("evidence/") || pathname.includes("..") || !stage || !programId || !programTitle || !level) {
-      return NextResponse.json({ error: "بيانات الشاهد غير مكتملة." }, { status: 400 });
+      return jsonError("بيانات الشاهد غير مكتملة.", 400);
     }
     if (!ALLOWED_TYPES.has(mimeType) || !ALLOWED_EXTENSIONS.has(path.extname(fileName).toLowerCase())) {
-      return NextResponse.json({ error: "نوع الملف غير مدعوم." }, { status: 415 });
+      return jsonError("نوع الملف غير مدعوم.", 415);
     }
-    if (!Number.isSafeInteger(size) || size < 1 || size > 100 * 1024 * 1024) {
-      return NextResponse.json({ error: "حجم الملف يجب ألا يتجاوز 100 ميجابايت." }, { status: 413 });
-    }
-
-    let filePath = `blob:${pathname}`;
-    if (hostingerStorageConfigured()) {
-      const stagedBlob = await get(pathname, { access: "private" });
-      if (!stagedBlob || stagedBlob.statusCode !== 200) {
-        return NextResponse.json({ error: "تعذر العثور على الملف المرفوع مؤقتًا." }, { status: 404 });
-      }
-      const safeSegment = (value: string) => value.normalize("NFKC").replace(/[^\p{L}\p{N}_-]/gu, "_").slice(0, 80) || "unknown";
-      const relativePath = [safeSegment(stage), safeSegment(programId), safeSegment(level), `${randomUUID()}${path.extname(fileName).toLowerCase()}`].join("/");
-      hostingerPath = relativePath;
-      await putEvidence(relativePath, Readable.fromWeb(stagedBlob.stream as unknown as NodeReadableStream<Uint8Array>));
-      filePath = `sftp:${relativePath}`;
+    if (!Number.isSafeInteger(size) || size < 1 || size > MAX_SIZE) {
+      return jsonError("حجم الملف يجب ألا يتجاوز 100 ميجابايت.", 413);
     }
 
-    const evidence = await prisma.evidence.create({
-      data: { stage, programId, programTitle, level, assessment, notes, fileName, filePath, mimeType, size },
+    if (!hostingerStorageConfigured()) {
+      const evidence = await prisma.evidence.create({
+        data: { stage, programId, programTitle, level, assessment, notes, fileName, filePath: `blob:${pathname}`, mimeType, size },
+      });
+      return NextResponse.json({ evidence: { ...evidence, filePath: `/api/evidence/file/${encodeURIComponent(evidence.id)}` } }, { status: 201 });
+    }
+
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        const send = (payload: Record<string, unknown>) => {
+          controller.enqueue(encoder.encode(`${JSON.stringify(payload)}\n`));
+        };
+
+        void (async () => {
+          let hostingerPath = "";
+          try {
+            const stagedBlob = await get(pathname, { access: "private" });
+            if (!stagedBlob || stagedBlob.statusCode !== 200) {
+              send({ type: "error", error: "تعذر العثور على الملف المرفوع مؤقتًا." });
+              return;
+            }
+
+            const relativePath = [
+              safeSegment(stage),
+              safeSegment(programId),
+              safeSegment(level),
+              `${randomUUID()}${path.extname(fileName).toLowerCase()}`,
+            ].join("/");
+            hostingerPath = relativePath;
+
+            await putEvidence(
+              relativePath,
+              Readable.fromWeb(stagedBlob.stream as unknown as NodeReadableStream<Uint8Array>),
+              size,
+              (percentage) => send({ type: "progress", percentage })
+            );
+
+            const evidence = await prisma.evidence.create({
+              data: { stage, programId, programTitle, level, assessment, notes, fileName, filePath: `sftp:${relativePath}`, mimeType, size },
+            });
+
+            try { await del(pathname); }
+            catch (cleanupError) { console.error("Temporary Blob cleanup failed:", cleanupError); }
+
+            send({
+              type: "complete",
+              evidence: { ...evidence, filePath: `/api/evidence/file/${encodeURIComponent(evidence.id)}` },
+            });
+          } catch (error) {
+            console.error("Evidence registration failed:", error);
+            if (hostingerPath) {
+              try { await deleteEvidence(hostingerPath); }
+              catch (cleanupError) { console.error("Hostinger evidence cleanup failed:", cleanupError); }
+            }
+            try { await del(pathname); }
+            catch (cleanupError) { console.error("Evidence Blob cleanup failed:", cleanupError); }
+            send({ type: "error", error: "تعذر نقل الشاهد إلى خادم التخزين. تحقق من إعدادات SFTP وقاعدة البيانات ثم حاول مجددًا." });
+          } finally {
+            controller.close();
+          }
+        })();
+      },
     });
-    if (hostingerPath) {
-      try { await del(pathname); }
-      catch (cleanupError) { console.error("Temporary Blob cleanup failed:", cleanupError); }
-    }
-    return NextResponse.json({ evidence: { ...evidence, filePath: `/api/evidence/file/${encodeURIComponent(evidence.id)}` } }, { status: 201 });
+
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "application/x-ndjson; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+        "X-Accel-Buffering": "no",
+      },
+    });
   } catch (error) {
-    console.error("Evidence registration failed:", error);
-    if (hostingerPath) {
-      try { await deleteEvidence(hostingerPath); }
-      catch (cleanupError) { console.error("Hostinger evidence cleanup failed:", cleanupError); }
-    }
-    if (pathname.startsWith("evidence/")) {
-      try { await del(pathname); }
-      catch (cleanupError) { console.error("Evidence Blob cleanup failed:", cleanupError); }
-    }
-    return NextResponse.json({ error: "تعذر حفظ بيانات الشاهد. تحقق من اتصال قاعدة البيانات ثم حاول مجددًا." }, { status: 500 });
+    console.error("Evidence registration request failed:", error);
+    return jsonError("تعذر حفظ بيانات الشاهد. تحقق من اتصال قاعدة البيانات ثم حاول مجددًا.", 500);
   }
 }
