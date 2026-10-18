@@ -54,7 +54,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Evidence registration failed:", error);
     if (pathname.startsWith("evidence/")) {
-      try { await del(pathname, { access: "private" }); }
+      try { await del(pathname); }
       catch (cleanupError) { console.error("Evidence Blob cleanup failed:", cleanupError); }
     }
     return NextResponse.json({ error: "تعذر حفظ بيانات الشاهد. تحقق من اتصال قاعدة البيانات ثم حاول مجددًا." }, { status: 500 });

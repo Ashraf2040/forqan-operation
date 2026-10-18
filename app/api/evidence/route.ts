@@ -201,7 +201,7 @@ export async function POST(request: Request) {
     }
     if (uploadedBlobPath) {
       try {
-        await del(uploadedBlobPath, { access: "private" });
+        await del(uploadedBlobPath);
       } catch (cleanupError) {
         console.error("Evidence Blob cleanup failed:", cleanupError);
       }
@@ -228,7 +228,7 @@ export async function DELETE(request: Request) {
     if (!evidence) return jsonError("الشاهد غير موجود أو سبق حذفه.", 404);
 
     if (evidence.filePath.startsWith("blob:")) {
-      await del(evidence.filePath.slice("blob:".length), { access: "private" });
+      await del(evidence.filePath.slice("blob:".length));
     } else {
       try {
         await unlink(storagePath(evidence.filePath));
