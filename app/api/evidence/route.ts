@@ -66,7 +66,6 @@ export async function GET(request: Request) {
     const stage = params.get("stage");
     const programId = params.get("programId");
     const level = params.get("level");
-
     if (!stage || !programId || !level) {
       return jsonError("بيانات البحث غير مكتملة.", 400);
     }

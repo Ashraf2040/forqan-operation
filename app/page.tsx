@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft, BookOpenCheck, ClipboardCheck, GraduationCap, Sparkles, TrendingUp } from "lucide-react";
 import UserNavButton from "./components/UserNavButton";
 import HomeProgressSummary from "./components/HomeProgressSummary";
+import PlanIndicators from "./components/PlanIndicators";
 import StageCards from "./components/StageCards";
 
 const stages = [
@@ -41,6 +42,7 @@ export default function Home() {
       <StageCards stages={stages}/>
       <div className="mt-8 rounded-2xl border border-[#e8eee7] bg-[#f7f9f4] px-5 py-4 text-sm leading-7 text-[#77827b]">تصفح البرامج وسجلات المتابعة لكل مرحلة، أو افتح بطاقة «جميع المراحل» للاطلاع على البرامج المشتركة ومؤشرات الخطة الموحدة.</div>
     </section>
+    <PlanIndicators/>
     <HomeProgressSummary/>
     <footer className="border-t border-[#e9ece7] py-6"><div className="container flex flex-wrap justify-between gap-2 text-xs text-[#8b9690]"><span>مدارس الفرقان الأهلية · القسم الأمريكي</span><span>الخطة التشغيلية 2026–2027م</span></div></footer>
   </main>;

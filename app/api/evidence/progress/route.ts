@@ -20,18 +20,23 @@ export async function GET(request: Request) {
     return jsonError("المرحلة المحددة غير صالحة.", 400);
   }
 
-  const rows = await prisma.evidence.groupBy({
-    by: ["programId", "level"],
-    where: { stage, level: { in: ["level-1", "level-2", "level-3", "level-4", "level-5"] } },
-    _count: { _all: true },
-  });
-  const progress: Record<string, { completedLevels: number; percentage: number; completedLevelIds: string[] }> = {};
-  for (const row of rows) {
-    const current = progress[row.programId] ?? { completedLevels: 0, percentage: 0, completedLevelIds: [] };
-    current.completedLevelIds.push(row.level);
-    current.completedLevels = current.completedLevelIds.length;
-    current.percentage = current.completedLevels * 20;
-    progress[row.programId] = current;
+  try {
+    const rows = await prisma.evidence.groupBy({
+      by: ["programId", "level"],
+      where: { stage, level: { in: ["level-1", "level-2", "level-3", "level-4", "level-5"] } },
+      _count: { _all: true },
+    });
+    const progress: Record<string, { completedLevels: number; percentage: number; completedLevelIds: string[] }> = {};
+    for (const row of rows) {
+      const current = progress[row.programId] ?? { completedLevels: 0, percentage: 0, completedLevelIds: [] };
+      current.completedLevelIds.push(row.level);
+      current.completedLevels = current.completedLevelIds.length;
+      current.percentage = current.completedLevels * 20;
+      progress[row.programId] = current;
+    }
+    return NextResponse.json({ progress }, { headers: { "Cache-Control": "private, no-store" } });
+  } catch {
+    console.error("Evidence progress query failed: database unavailable.");
+    return jsonError("تعذر الاتصال بقاعدة البيانات لقراءة تقدم الشواهد. حاول مرة أخرى بعد استعادة الاتصال.", 503);
   }
-  return NextResponse.json({ progress }, { headers: { "Cache-Control": "private, no-store" } });
 }
