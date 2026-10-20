@@ -37,13 +37,15 @@ export async function putEvidence(
   relativePath: string,
   content: Buffer | Readable,
   totalBytes: number,
-  onProgress?: (percentage: number) => void
+  onProgress?: (percentage: number) => void,
+  onConnected?: () => void,
 ) {
   const client = new SftpClient();
   const fullPath = remotePath(relativePath);
   try {
     await client.connect(config());
     await client.mkdir(path.posix.dirname(fullPath), true);
+    onConnected?.();
     if (Buffer.isBuffer(content)) {
       await client.put(content, fullPath);
       onProgress?.(100);

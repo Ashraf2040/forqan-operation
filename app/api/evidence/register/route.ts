@@ -92,13 +92,16 @@ export async function POST(request: Request) {
             ].join("/");
             hostingerPath = relativePath;
 
+            send({ type: "phase", phase: "connecting" });
             await putEvidence(
               relativePath,
               Readable.fromWeb(stagedBlob.stream as unknown as NodeReadableStream<Uint8Array>),
               size,
-              (percentage) => send({ type: "progress", percentage })
+              (percentage) => send({ type: "progress", percentage: Math.min(99, percentage) }),
+              () => send({ type: "phase", phase: "transferring" })
             );
 
+            send({ type: "phase", phase: "saving" });
             const evidence = await prisma.evidence.create({
               data: { stage, programId, programTitle, level, assessment, notes, fileName, filePath: `sftp:${relativePath}`, mimeType, size },
             });

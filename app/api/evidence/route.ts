@@ -5,7 +5,7 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
-import { deleteEvidence } from "@/lib/hostinger-storage";
+import { deleteEvidence, hostingerStorageConfigured } from "@/lib/hostinger-storage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -227,8 +227,14 @@ export async function DELETE(request: Request) {
     const evidence = await prisma.evidence.findUnique({ where: { id } });
     if (!evidence) return jsonError("الشاهد غير موجود أو سبق حذفه.", 404);
 
+    let warning: string | undefined;
     if (evidence.filePath.startsWith("sftp:")) {
-      await deleteEvidence(evidence.filePath.slice("sftp:".length));
+      if (hostingerStorageConfigured()) {
+        await deleteEvidence(evidence.filePath.slice("sftp:".length));
+      } else {
+        warning = "حُذف سجل الشاهد من المنصة، لكن تعذر حذف نسخة الملف من Hostinger لأن إعدادات SFTP غير متوفرة.";
+        console.warn("Evidence record removed without remote SFTP cleanup: storage is not configured.");
+      }
     } else if (evidence.filePath.startsWith("blob:")) {
       await del(evidence.filePath.slice("blob:".length));
     } else {
@@ -240,7 +246,7 @@ export async function DELETE(request: Request) {
     }
 
     await prisma.evidence.delete({ where: { id } });
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, warning });
   } catch (error) {
     console.error("Evidence deletion failed:", error);
     return jsonError("تعذر حذف الشاهد. حاول مرة أخرى.", 500);
