@@ -1,13 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
-import { FormEvent, Suspense, useState } from "react";
+import { FormEvent, useState } from "react";
 import { ArrowRight, BookOpenCheck, LockKeyhole } from "lucide-react";
 
 function LoginForm() {
-  const searchParams = useSearchParams();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -26,9 +24,7 @@ function LoginForm() {
       setError("اسم المستخدم أو كلمة المرور غير صحيحة.");
       return;
     }
-    const callback = searchParams.get("callbackUrl");
-    const destination = callback ? new URL(callback, window.location.origin) : new URL("/stage/all", window.location.origin);
-    window.location.assign(destination.origin === window.location.origin ? `${destination.pathname}${destination.search}${destination.hash}` : "/stage/all");
+    window.location.assign("/");
   }
 
   return <form onSubmit={handleSubmit} className="mt-8 space-y-5">
@@ -46,7 +42,7 @@ export default function LoginPage() {
       <div className="mb-3 grid h-12 w-12 place-items-center rounded-2xl bg-[#f3f6f0] text-[#397c68]"><LockKeyhole size={22}/></div>
       <h1 className="text-3xl font-bold">مرحبًا بعودتك</h1>
       <p className="mt-2 text-sm leading-7 text-[#778581]">سجّل الدخول لمتابعة برامج الخطة التشغيلية وشواهد التنفيذ.</p>
-      <Suspense fallback={<div className="mt-8 h-52 animate-pulse rounded-xl bg-[#f5f7f3]"/>}><LoginForm/></Suspense>
+      <LoginForm/>
       <Link href="/" className="mt-7 block text-center text-sm text-[#74827c] hover:text-[#176d60]">العودة إلى الصفحة الرئيسية</Link>
     </section>
   </main>;

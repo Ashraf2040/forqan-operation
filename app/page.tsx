@@ -9,7 +9,7 @@ const stages = [
   { id:"primary", title:"المرحلة الابتدائية", en:"ELEMENTARY", grades:"الصفوف 1 – 6", color:"#dff2e9", icon:"🌱", count:"6 صفوف دراسية" },
   { id:"middle", title:"المرحلة المتوسطة", en:"MIDDLE SCHOOL", grades:"الصفوف 7 – 9", color:"#e8eafd", icon:"🧭", count:"3 صفوف دراسية" },
   { id:"high", title:"المرحلة الثانوية", en:"HIGH SCHOOL", grades:"الصفوف 10 – 12", color:"#fae9d8", icon:"🎓", count:"3 صفوف دراسية" },
-  { id:"all", title:"جميع المراحل", en:"ALL STAGES", grades:"الابتدائية والمتوسطة والثانوية", color:"#e7f3ec", icon:"🏫", count:"14 برنامجًا مشتركًا" },
+  { id:"development", title:"تطوير الخطة التشغيلية", en:"PLAN DEVELOPMENT", grades:"أهداف ومتابعة يدوية", color:"#e7f3ec", icon:"📝", count:"أضف أهداف الخطة ومتابعتها" },
 ];
 
 export default function Home() {
@@ -40,7 +40,7 @@ export default function Home() {
     <section id="stages" className="stage-cards-container pb-16 pt-16">
       <div className="mb-9 flex flex-wrap items-end justify-between gap-4"><div><div className="mb-2 text-xs font-bold tracking-[.16em] text-[#b28a4b]">اختر المرحلة</div><h2 className="text-3xl font-bold">رحلتكم تبدأ من هنا</h2><p className="mt-2 text-sm text-[#778581]">اختر المرحلة لعرض برامجها ومتابعة تنفيذها.</p></div><span className="rounded-full bg-[#f3f6f0] px-4 py-2 text-xs text-[#6d7d73]">ثلاث مراحل · خطة متكاملة</span></div>
       <StageCards stages={stages}/>
-      <div className="mt-8 rounded-2xl border border-[#e8eee7] bg-[#f7f9f4] px-5 py-4 text-sm leading-7 text-[#77827b]">تصفح البرامج وسجلات المتابعة لكل مرحلة، أو افتح بطاقة «جميع المراحل» للاطلاع على البرامج المشتركة ومؤشرات الخطة الموحدة.</div>
+      <div className="mt-8 rounded-2xl border border-[#e8eee7] bg-[#f7f9f4] px-5 py-4 text-sm leading-7 text-[#77827b]">تصفح برامج المراحل الدراسية، أو افتح «تطوير الخطة التشغيلية» لإضافة الأهداف وسجلات المتابعة يدويًا.</div>
     </section>
     <PlanIndicators/>
     <HomeProgressSummary/>

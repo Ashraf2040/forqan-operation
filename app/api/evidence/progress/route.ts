@@ -1,10 +1,16 @@
+
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 
 async function authorized() {
   const session = await auth();
-  return session?.user ? null : NextResponse.json({ error: "يجب تسجيل الدخول أولًا." }, { status: 401 });
+  return session?.user
+    ? null
+    : NextResponse.json(
+        { error: "يجب تسجيل الدخول أولًا." },
+        { status: 401 }
+      );
 }
 
 function jsonError(message: string, status: number) {
@@ -16,27 +22,60 @@ export async function GET(request: Request) {
   if (denied) return denied;
 
   const stage = new URL(request.url).searchParams.get("stage");
-  if (!stage || !["primary", "middle", "high", "all"].includes(stage)) {
+
+  if (
+    !stage ||
+    !["primary", "middle", "high", "all", "development"].includes(stage)
+  ) {
     return jsonError("المرحلة المحددة غير صالحة.", 400);
   }
 
   try {
     const rows = await prisma.evidence.groupBy({
       by: ["programId", "level"],
-      where: { stage, level: { in: ["level-1", "level-2", "level-3", "level-4", "level-5"] } },
+      where: {
+        stage,
+        level: {
+          in: ["level-1", "level-2", "level-3", "level-4", "level-5"],
+        },
+      },
       _count: { _all: true },
     });
-    const progress: Record<string, { completedLevels: number; percentage: number; completedLevelIds: string[] }> = {};
+
+    const progress: Record<
+      string,
+      {
+        completedLevels: number;
+        percentage: number;
+        completedLevelIds: string[];
+        evidenceCounts: Record<string, number>;
+      }
+    > = {};
+
     for (const row of rows) {
-      const current = progress[row.programId] ?? { completedLevels: 0, percentage: 0, completedLevelIds: [] };
+      const current = progress[row.programId] ?? {
+        completedLevels: 0,
+        percentage: 0,
+        completedLevelIds: [],
+        evidenceCounts: {},
+      };
+
       current.completedLevelIds.push(row.level);
+      current.evidenceCounts[row.level] = row._count._all;
       current.completedLevels = current.completedLevelIds.length;
       current.percentage = current.completedLevels * 20;
       progress[row.programId] = current;
     }
-    return NextResponse.json({ progress }, { headers: { "Cache-Control": "private, no-store" } });
-  } catch {
-    console.error("Evidence progress query failed: database unavailable.");
-    return jsonError("تعذر الاتصال بقاعدة البيانات لقراءة تقدم الشواهد. حاول مرة أخرى بعد استعادة الاتصال.", 503);
+
+    return NextResponse.json(
+      { progress },
+      { headers: { "Cache-Control": "private, no-store" } }
+    );
+  } catch (error) {
+    console.error("Evidence progress query failed:", error);
+    return jsonError(
+      "تعذر الاتصال بقاعدة البيانات لقراءة تقدم الشواهد.",
+      503
+    );
   }
 }
