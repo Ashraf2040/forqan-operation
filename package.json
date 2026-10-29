@@ -2,15 +2,16 @@
   "name": "alfurqan-operational-plan",
   "version": "1.0.0",
   "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "db:push": "prisma db push",
-    "db:generate": "prisma generate",
-    "admin:create": "node --env-file=.env scripts/create-admin.mjs",
-    "viewer:create": "node --env-file=.env scripts/create-viewer.mjs"
-  },
+ "scripts": {
+  "dev": "next dev",
+  "build": "prisma generate && next build",
+  "start": "next start",
+  "postinstall": "prisma generate",
+  "db:push": "prisma db push",
+  "db:generate": "prisma generate",
+  "admin:create": "node --env-file=.env scripts/create-admin.mjs",
+  "viewer:create": "node --env-file=.env scripts/create-viewer.mjs"
+},
   "dependencies": {
     "@prisma/client": "^6.8.2",
     "@vercel/blob": "^2.8.2",
