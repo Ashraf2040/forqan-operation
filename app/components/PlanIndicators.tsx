@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Printer, Target } from "lucide-react";
+import { LoaderCircle, Printer, Save, Target } from "lucide-react";
 import source from "@/app/data/plan-indicators.json";
 
 type KPI = { code: string; name: string; dir: string; mode: string; baseD: string; bn: number | null; tn: number | null; targetD: string; freq: string; tool: string; owner: string; prog: string };
@@ -37,14 +37,54 @@ export default function PlanIndicators() {
   const [expanded, setExpanded] = useState(false);
   const [entries, setEntries] = useState<Record<string, Entry>>({});
   const [ready, setReady] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState("");
   useEffect(() => {
-    try { setEntries(JSON.parse(localStorage.getItem("plan-indicators-values-v2") || "{}")); } catch { setEntries({}); }
-    setReady(true);
+    let active = true;
+    const load = async () => {
+      let local: Record<string, Entry> = {};
+      try { local = JSON.parse(localStorage.getItem("plan-indicators-values-v2") || "{}"); } catch { /* Ignore invalid browser cache. */ }
+      try {
+        const response = await fetch("/api/operational-indicators", { cache: "no-store" });
+        if (!response.ok) throw new Error("تعذر تحميل المؤشرات المحفوظة.");
+        const result = await response.json();
+        if (!active) return;
+        const saved = result.entries as Record<string, Entry>;
+        setEntries({ ...local, ...saved });
+      } catch {
+        if (active) {
+          setEntries(local);
+          setSaveMessage("تعذر الاتصال بقاعدة البيانات؛ القيم المحلية متاحة مؤقتاً.");
+        }
+      } finally {
+        if (active) setReady(true);
+      }
+    };
+    void load();
+    return () => { active = false; };
   }, []);
   useEffect(() => { if (ready) localStorage.setItem("plan-indicators-values-v2", JSON.stringify(entries)); }, [entries, ready]);
   const rows = useMemo(() => objectives[stage].flatMap((objective) => objective.kpis.map((kpi) => ({ objective, kpi, key: `${stage}:${kpi.code}` }))), [stage]);
   const totals = rows.reduce<Record<string, number>>((result, row) => { const st = state(row.kpi, entries[row.key]?.value || ""); result[st] = (result[st] || 0) + 1; return result; }, {});
   const setValue = (key: string, value: string) => setEntries((current) => ({ ...current, [key]: { value, updated: Date.now() } }));
+  const save = async () => {
+    setSaving(true);
+    setSaveMessage("");
+    try {
+      const response = await fetch("/api/operational-indicators", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ entries }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "تعذر حفظ المؤشرات.");
+      setSaveMessage("تم حفظ المؤشرات في قاعدة البيانات.");
+    } catch (error) {
+      setSaveMessage(error instanceof Error ? error.message : "تعذر حفظ المؤشرات.");
+    } finally {
+      setSaving(false);
+    }
+  };
   const printDate = new Date().toLocaleDateString("ar-SA");
 
   return <section id="plan-indicators" className="container pb-8">
@@ -54,8 +94,9 @@ export default function PlanIndicators() {
     </button>
     {expanded && <div id="plan-indicators-content">
     <div className="mb-5 flex flex-wrap items-center justify-end gap-3 print:hidden">
-      <div className="flex flex-wrap items-center gap-2"><label className="sr-only" htmlFor="indicator-stage">المرحلة</label><select id="indicator-stage" value={stage} onChange={(event) => setStage(event.target.value as Stage)} className="rounded-full border border-[#DDE6DF] bg-white px-4 py-2 text-sm">{Object.entries(stageNames).map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select><button type="button" onClick={() => window.print()} className="btn btn-primary !rounded-full !px-4 !py-2 text-sm"><Printer size={16}/> طباعة تقرير المرحلة</button></div>
+      <div className="flex flex-wrap items-center gap-2"><label className="sr-only" htmlFor="indicator-stage">المرحلة</label><select id="indicator-stage" value={stage} onChange={(event) => setStage(event.target.value as Stage)} className="rounded-full border border-[#DDE6DF] bg-white px-4 py-2 text-sm">{Object.entries(stageNames).map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select><button type="button" onClick={save} disabled={!ready || saving} className="btn btn-primary !rounded-full !px-4 !py-2 text-sm disabled:opacity-60">{saving ? <LoaderCircle size={16} className="animate-spin"/> : <Save size={16}/>} {saving ? "جارٍ الحفظ…" : "حفظ المؤشرات"}</button><button type="button" onClick={() => window.print()} className="btn btn-primary !rounded-full !px-4 !py-2 text-sm"><Printer size={16}/> طباعة تقرير المرحلة</button></div>
     </div>
+    {saveMessage && <p role="status" className="mb-4 text-sm text-[#397c68]">{saveMessage}</p>}
     <div className="hidden print:block"><h2 className="mb-2 text-2xl font-bold">تقرير مؤشرات الخطة التشغيلية — {stageNames[stage]}</h2><p className="mb-4 text-sm">العام الدراسي 1447–1448هـ · تاريخ الطباعة: {printDate}</p></div>
     <div className="mb-4 flex flex-wrap gap-2 print:hidden">{Object.entries(stateLabels).map(([key, label]) => <span key={key} className={`rounded-full px-3 py-1 text-xs ${stateClasses[key]}`}>{label} <b>({totals[key] || 0})</b></span>)}</div>
     {objectives[stage].map((objective) => {
