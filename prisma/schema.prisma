@@ -48,3 +48,12 @@ model OperationalGoal {
   createdAt    DateTime @default(now())
 }
 
+model OperationalIndicator {
+  stage     String
+  code      String
+  value     String
+  updatedAt DateTime @updatedAt
+
+  @@id([stage, code])
+}
+
