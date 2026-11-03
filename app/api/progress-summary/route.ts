@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 const GOALS_PER_STAGE = { primary: 13, middle: 12, high: 12, all: 14 } as const;
-const EVIDENCE_PER_GOAL = 10;
+const EVIDENCE_PER_GOAL = 5;
 
 export async function GET() {
   const customGoals = await prisma.operationalGoal.findMany({ select: { id: true } });
