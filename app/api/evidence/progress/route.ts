@@ -13,7 +13,7 @@ async function authorized() {
       );
 }
 
-const EVIDENCE_PER_GOAL = 10;
+const EVIDENCE_PER_GOAL = 5;
 
 function jsonError(message: string, status: number) {
   return NextResponse.json({ error: message }, { status });
@@ -68,7 +68,7 @@ export async function GET(request: Request) {
       current.evidenceCounts[row.level] = row._count._all;
       current.evidenceCount += row._count._all;
       current.completedLevels = current.completedLevelIds.length;
-      current.percentage = Math.min(current.evidenceCount, EVIDENCE_PER_GOAL) * 10;
+      current.percentage = Math.min(current.evidenceCount, EVIDENCE_PER_GOAL) * 20;
       progress[row.programId] = current;
     }
 
