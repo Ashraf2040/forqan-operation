@@ -13,6 +13,8 @@ async function authorized() {
       );
 }
 
+const EVIDENCE_PER_GOAL = 10;
+
 function jsonError(message: string, status: number) {
   return NextResponse.json({ error: message }, { status });
 }
@@ -49,6 +51,7 @@ export async function GET(request: Request) {
         percentage: number;
         completedLevelIds: string[];
         evidenceCounts: Record<string, number>;
+        evidenceCount: number;
       }
     > = {};
 
@@ -58,12 +61,14 @@ export async function GET(request: Request) {
         percentage: 0,
         completedLevelIds: [],
         evidenceCounts: {},
+        evidenceCount: 0,
       };
 
       current.completedLevelIds.push(row.level);
       current.evidenceCounts[row.level] = row._count._all;
+      current.evidenceCount += row._count._all;
       current.completedLevels = current.completedLevelIds.length;
-      current.percentage = current.completedLevels * 20;
+      current.percentage = Math.min(current.evidenceCount, EVIDENCE_PER_GOAL) * 10;
       progress[row.programId] = current;
     }
 
